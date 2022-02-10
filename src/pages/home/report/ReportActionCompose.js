@@ -149,6 +149,9 @@ class ReportActionCompose extends React.Component {
         this.getInputPlaceholder = this.getInputPlaceholder.bind(this);
         this.setPreferredSkinTone = this.setPreferredSkinTone.bind(this);
 
+        this.currentSelection = null;
+        this.isEmojiPickerShown = false;
+
         this.state = {
             isFocused: this.shouldFocusInputOnScreenFocus,
             textInputShouldClear: false,
@@ -207,7 +210,12 @@ class ReportActionCompose extends React.Component {
     }
 
     onSelectionChange(e) {
-        this.setState({selection: e.nativeEvent.selection});
+
+      if (!this.isEmojiPickerShown) {
+         this.currentSelection = e.nativeEvent.selection;
+       }
+        //this.selection =.nativeEvent.selection;
+        //this.setState({selection: e.nativeEvent.selection});
     }
 
     /**
@@ -256,6 +264,8 @@ class ReportActionCompose extends React.Component {
      * @memberof ReportActionCompose
      */
     setTextInputRef(el) {
+        console.log('el value');
+        console.log(el);
         ReportActionComposeFocusManager.composerRef.current = el;
         this.textInput = el;
     }
@@ -332,11 +342,19 @@ class ReportActionCompose extends React.Component {
      *
      * @param {String} newComment
      */
-    updateComment(newComment) {
-        this.textInput.setNativeProps({text: newComment});
-        this.setState({
-            isCommentEmpty: newComment.length === 0,
-        });
+    updateComment(newComment) {//, nextSelection) {
+        //this.textInput.setNativeProps({text: newComment});
+
+        //const selection = nextSelection
+        //   ? nextSelection
+        //   : { start: undefined, end: undefined };
+        //if (nextSelection) {
+        //    this.textInput.setNativeProps({ selection });
+        //}
+
+        //this.setState({
+        //    isCommentEmpty: newComment.length === 0,
+        //});
 
         // Indicate that draft has been created.
         if (this.comment.length === 0 && newComment.length !== 0) {
@@ -406,6 +424,7 @@ class ReportActionCompose extends React.Component {
      *
      */
     showEmojiPicker() {
+        this.isEmojiPickerShown = true;
         this.textInput.blur();
         this.setState({isEmojiPickerVisible: true});
     }
@@ -429,6 +448,7 @@ class ReportActionCompose extends React.Component {
      */
     hideEmojiPicker() {
         this.setState({isEmojiPickerVisible: false});
+        this.isEmojiPickerShown = false;
     }
 
     /**
@@ -437,22 +457,57 @@ class ReportActionCompose extends React.Component {
      * @param {String} emoji
      * @param {Object} emojiObject
      */
+
     addEmojiToTextBox(emoji, emojiObject) {
-        EmojiUtils.addToFrequentlyUsedEmojis(this.props.frequentlyUsedEmojis, emojiObject);
+        EmojiUtils.addToFrequentlyUsedEmojis(
+          this.props.frequentlyUsedEmojis,
+          emojiObject
+        );
         this.hideEmojiPicker();
-        const newComment = this.comment.slice(0, this.state.selection.start)
-            + emoji + this.comment.slice(this.state.selection.end, this.comment.length);
-        this.textInput.setNativeProps({
-            text: newComment,
-        });
-        this.setState(prevState => ({
-            selection: {
-                start: prevState.selection.start + emoji.length,
-                end: prevState.selection.start + emoji.length,
-            },
-        }));
-        this.updateComment(newComment);
+
+        const newComment =
+          this.comment.slice(0, this.currentSelection.start) +
+          emoji +
+          this.comment.slice(this.currentSelection.end, this.comment.length);
+
+        const nextSelection = {
+          start: this.currentSelection.start + emoji.length,
+          end: this.currentSelection.start + emoji.length,
+        };
+
+        if (window) {
+            console.log('not have');
+            console.log(Object.keys(this.textInput));
+            this.textInput.value = newComment;
+            this.textInput.setSelectionRange(nextSelection.start, nextSelection.end);
+        } else {
+            console.log('have dazo');
+            console.log(Object.keys(this.textInput));
+            console.log(this.textInput.setNativeProps);
+            this.textInput.setNativeProps({text: newComment, selectionRange: nextSelection });
+        }
+        //this.textInput.setNativeProps({text: newComment, selection: nextSelection });
+        console.log(this.textInput);
+
+        this.updateComment(newComment, nextSelection);
     }
+
+    //addEmojiToTextBox(emoji, emojiObject) {
+    //    EmojiUtils.addToFrequentlyUsedEmojis(this.props.frequentlyUsedEmojis, emojiObject);
+    //    this.hideEmojiPicker();
+    //    const newComment = this.comment.slice(0, this.state.selection.start)
+    //        + emoji + this.comment.slice(this.state.selection.end, this.comment.length);
+    //    this.textInput.setNativeProps({
+    //        text: newComment,
+    //    });
+    //    this.setState(prevState => ({
+    //        selection: {
+    //            start: prevState.selection.start + emoji.length,
+    //            end: prevState.selection.start + emoji.length,
+    //        },
+    //    }));
+    //    this.updateComment(newComment);
+    //}
 
     /**
      * Focus the search input in the emoji picker.
@@ -490,6 +545,7 @@ class ReportActionCompose extends React.Component {
     }
 
     render() {
+        console.log('render');
         // Waiting until ONYX variables are loaded before displaying the component
         if (_.isEmpty(this.props.personalDetails) || _.isEmpty(this.props.myPersonalDetails)) {
             return null;
@@ -663,7 +719,7 @@ class ReportActionCompose extends React.Component {
                                     shouldClear={this.state.textInputShouldClear}
                                     onClear={() => this.setTextInputShouldClear(false)}
                                     isDisabled={isComposeDisabled || isBlockedFromConcierge || isArchivedChatRoom}
-                                    selection={this.state.selection}
+                                    //selection={this.state.selection}
                                     onSelectionChange={this.onSelectionChange}
                                 />
 
