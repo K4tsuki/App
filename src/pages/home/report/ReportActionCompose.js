@@ -148,6 +148,7 @@ class ReportActionCompose extends React.Component {
         this.setTextInputRef = this.setTextInputRef.bind(this);
         this.getInputPlaceholder = this.getInputPlaceholder.bind(this);
         this.setPreferredSkinTone = this.setPreferredSkinTone.bind(this);
+        this.setTextAndSelectionOfTextInput = this.setTextAndSelectionOfTextInput.bind(this);
 
         this.currentSelection = null;
         this.isEmojiPickerShown = false;
@@ -264,8 +265,6 @@ class ReportActionCompose extends React.Component {
      * @memberof ReportActionCompose
      */
     setTextInputRef(el) {
-        console.log('el value');
-        console.log(el);
         ReportActionComposeFocusManager.composerRef.current = el;
         this.textInput = el;
     }
@@ -342,21 +341,7 @@ class ReportActionCompose extends React.Component {
      *
      * @param {String} newComment
      */
-    updateComment(newComment) {//, nextSelection) {
-        //this.textInput.setNativeProps({text: newComment});
-
-        //const selection = nextSelection
-        //   ? nextSelection
-        //   : { start: undefined, end: undefined };
-        //if (nextSelection) {
-        //    this.textInput.setNativeProps({ selection });
-        //}
-
-        //this.setState({
-        //    isCommentEmpty: newComment.length === 0,
-        //});
-
-        // Indicate that draft has been created.
+    updateComment(newComment) {
         if (this.comment.length === 0 && newComment.length !== 0) {
             Report.setReportWithDraft(this.props.reportID.toString(), true);
         }
@@ -457,57 +442,42 @@ class ReportActionCompose extends React.Component {
      * @param {String} emoji
      * @param {Object} emojiObject
      */
+    setTextAndSelectionOfTextInput(newText, selection) {
+      if (window) {
+            // For react-native-web, because setNativeProps in react-native-web is slow and doesn't have good support
+            this.textInput.value = newText;
+            this.textInput.setSelectionRange(selection.start, selection.end);
+        } else {
+            this.textInput.setNativeProps({text: newText, selectionRange: selection });
+        }
+        this.updateComment(newText);
+    }
 
+    /**
+     * Callback for the emoji picker to add whatever emoji is chosen into the main input
+     *
+     * @param {String} emoji
+     * @param {Object} emojiObject
+     */
     addEmojiToTextBox(emoji, emojiObject) {
         EmojiUtils.addToFrequentlyUsedEmojis(
-          this.props.frequentlyUsedEmojis,
-          emojiObject
+            this.props.frequentlyUsedEmojis,
+            emojiObject
         );
         this.hideEmojiPicker();
 
         const newComment =
-          this.comment.slice(0, this.currentSelection.start) +
-          emoji +
-          this.comment.slice(this.currentSelection.end, this.comment.length);
+            this.comment.slice(0, this.currentSelection.start) +
+            emoji +
+            this.comment.slice(this.currentSelection.end, this.comment.length);
 
         const nextSelection = {
-          start: this.currentSelection.start + emoji.length,
-          end: this.currentSelection.start + emoji.length,
+            start: this.currentSelection.start + emoji.length,
+            end: this.currentSelection.start + emoji.length,
         };
-
-        if (window) {
-            console.log('not have');
-            console.log(Object.keys(this.textInput));
-            this.textInput.value = newComment;
-            this.textInput.setSelectionRange(nextSelection.start, nextSelection.end);
-        } else {
-            console.log('have dazo');
-            console.log(Object.keys(this.textInput));
-            console.log(this.textInput.setNativeProps);
-            this.textInput.setNativeProps({text: newComment, selectionRange: nextSelection });
-        }
-        //this.textInput.setNativeProps({text: newComment, selection: nextSelection });
-        console.log(this.textInput);
-
-        this.updateComment(newComment, nextSelection);
+        
+        this.setTextAndSelectionOfTextInput(newComment, nextSelection);
     }
-
-    //addEmojiToTextBox(emoji, emojiObject) {
-    //    EmojiUtils.addToFrequentlyUsedEmojis(this.props.frequentlyUsedEmojis, emojiObject);
-    //    this.hideEmojiPicker();
-    //    const newComment = this.comment.slice(0, this.state.selection.start)
-    //        + emoji + this.comment.slice(this.state.selection.end, this.comment.length);
-    //    this.textInput.setNativeProps({
-    //        text: newComment,
-    //    });
-    //    this.setState(prevState => ({
-    //        selection: {
-    //            start: prevState.selection.start + emoji.length,
-    //            end: prevState.selection.start + emoji.length,
-    //        },
-    //    }));
-    //    this.updateComment(newComment);
-    //}
 
     /**
      * Focus the search input in the emoji picker.
@@ -545,7 +515,6 @@ class ReportActionCompose extends React.Component {
     }
 
     render() {
-        console.log('render');
         // Waiting until ONYX variables are loaded before displaying the component
         if (_.isEmpty(this.props.personalDetails) || _.isEmpty(this.props.myPersonalDetails)) {
             return null;
